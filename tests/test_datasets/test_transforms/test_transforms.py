@@ -3,16 +3,18 @@ import copy
 import os.path as osp
 import unittest
 
+import cv2
 import mmcv
 import numpy as np
 import torch
 from mmdet.structures.bbox import HorizontalBoxes
-from mmdet.structures.mask import BitmapMasks
-
+from mmdet.structures.mask import BitmapMasks, PolygonMasks
+from mmyolo.mmyolo_custom.structrues.mask_transform import TransPolygonMasks
+from mmyolo.mmyolo_custom.transforms.transforms import YOLOv5RandomAffineWithMask
 from mmyolo.datasets.transforms import (LetterResize, LoadAnnotations,
                                         YOLOv5HSVRandomAug,
                                         YOLOv5KeepRatioResize,
-                                        YOLOv5RandomAffine)
+                                        YOLOv5RandomAffine,)
 from mmyolo.datasets.transforms.transforms import (PPYOLOERandomCrop,
                                                    PPYOLOERandomDistort)
 
@@ -350,6 +352,81 @@ class TestYOLOv5RandomAffine(unittest.TestCase):
         results['gt_bboxes'] = HorizontalBoxes(results['gt_bboxes'])
 
         transform = YOLOv5RandomAffine()
+        results = transform(copy.deepcopy(results))
+        self.assertTrue(results['img'].shape[:2] == (224, 224))
+        self.assertTrue(results['gt_bboxes_labels'].shape[0] ==
+                        results['gt_bboxes'].shape[0])
+        self.assertTrue(results['gt_bboxes_labels'].dtype == np.int64)
+        self.assertTrue(results['gt_bboxes'].dtype == torch.float32)
+        self.assertTrue(results['gt_ignore_flags'].dtype == bool)
+
+
+class TestYOLOv5RandomAffineMask(unittest.TestCase):
+
+    def setUp(self):
+        """Setup the data info which are used in every test method.
+
+        TestCase calls functions in this order: setUp() -> testMethod() ->
+        tearDown() -> cleanUp()
+        """
+
+        self.results = {
+            'img':
+            np.ones((224, 224, 3)),
+            'img_shape': (224, 224),
+            'gt_bboxes_labels':
+            np.array([1, 2, 3], dtype=np.int64),
+            'gt_bboxes':
+            np.array([[10, 10, 20, 20], [20, 20, 40, 40], [40, 40, 80, 80]],
+                     dtype=np.float32),
+            'gt_ignore_flags':
+            np.array([0, 0, 1], dtype=bool),
+            'gt_masks':
+            [[np.array([100,100,130,100,160,100,160,130,160,160,130,160,100,160,100,130])]],
+
+        }
+
+    def test_transform(self):
+        # test assertion for invalid translate_ratio
+        with self.assertRaises(AssertionError):
+            transform = YOLOv5RandomAffine(max_translate_ratio=1.5)
+
+        # test assertion for invalid scaling_ratio_range
+        with self.assertRaises(AssertionError):
+            transform = YOLOv5RandomAffine(scaling_ratio_range=(1.5, 0.5))
+
+        with self.assertRaises(AssertionError):
+            transform = YOLOv5RandomAffine(scaling_ratio_range=(0, 0.5))
+
+        transform = YOLOv5RandomAffineWithMask()
+        results = transform(copy.deepcopy(self.results))
+        self.assertTrue(results['img'].shape[:2] == (224, 224))
+        self.assertTrue(results['gt_bboxes_labels'].shape[0] ==
+                        results['gt_bboxes'].shape[0])
+        self.assertTrue(results['gt_bboxes_labels'].dtype == np.int64)
+        self.assertTrue(results['gt_bboxes'].dtype == np.float32)
+        self.assertTrue(results['gt_ignore_flags'].dtype == bool)
+
+    def test_transform_with_boxlist(self):
+        results = copy.deepcopy(self.results)
+        results['gt_bboxes'] = HorizontalBoxes(results['gt_bboxes'])
+
+        transform = YOLOv5RandomAffine()
+        results = transform(copy.deepcopy(results))
+        self.assertTrue(results['img'].shape[:2] == (224, 224))
+        self.assertTrue(results['gt_bboxes_labels'].shape[0] ==
+                        results['gt_bboxes'].shape[0])
+        self.assertTrue(results['gt_bboxes_labels'].dtype == np.int64)
+        self.assertTrue(results['gt_bboxes'].dtype == torch.float32)
+        self.assertTrue(results['gt_ignore_flags'].dtype == bool)
+
+    def test_transform_with_boxlist_mask(self):
+        results = copy.deepcopy(self.results)
+        img = copy.deepcopy(results['img'])
+        results['gt_bboxes'] = HorizontalBoxes(results['gt_bboxes'])
+        results['gt_masks'] = TransPolygonMasks.random(1,224,224,20)
+
+        transform = YOLOv5RandomAffineWithMask()
         results = transform(copy.deepcopy(results))
         self.assertTrue(results['img'].shape[:2] == (224, 224))
         self.assertTrue(results['gt_bboxes_labels'].shape[0] ==
