@@ -1,6 +1,8 @@
 _base_ = '../_base_/default_runtime.py'
-
 # dataset settings
+# custom_imports=dict(
+#     imports=['mmyolo.mmyolo_custom.transforms.MosaicMask',
+#              'mmyolo.mmyolo_custom.transforms.YOLOv5RandomAffineWithMask'])
 data_root = 'data/coco/'
 dataset_type = 'YOLOv5CocoDataset'
 
@@ -114,18 +116,18 @@ albu_train_transforms = [
 
 pre_transform = [
     dict(type='LoadImageFromFile', file_client_args=_base_.file_client_args),
-    dict(type='LoadAnnotations', with_bbox=True)
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=True,poly2mask=False)
 ]
 
 train_pipeline = [
     *pre_transform,
     dict(
-        type='Mosaic',
+        type='MosaicMask',
         img_scale=img_scale,
         pad_val=114.0,
         pre_transform=pre_transform),
     dict(
-        type='YOLOv5RandomAffine',
+        type='YOLOv5RandomAffineWithMask',
         max_rotate_degree=0.0,
         max_shear_degree=0.0,
         scaling_ratio_range=(0.5, 1.5),
@@ -141,7 +143,8 @@ train_pipeline = [
             label_fields=['gt_bboxes_labels', 'gt_ignore_flags']),
         keymap={
             'img': 'image',
-            'gt_bboxes': 'bboxes'
+            'gt_bboxes': 'bboxes',
+            'gt_masks':'masks',
         }),
     dict(type='YOLOv5HSVRandomAug'),
     dict(type='mmdet.RandomFlip', prob=0.5),
