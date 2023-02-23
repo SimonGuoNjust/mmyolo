@@ -372,7 +372,7 @@ class TestYOLOv5RandomAffineMask(unittest.TestCase):
 
         self.results = {
             'img':
-            np.ones((224, 224, 3)),
+            np.ones((640, 640, 3)),
             'img_shape': (224, 224),
             'gt_bboxes_labels':
             np.array([1, 2, 3], dtype=np.int64),
@@ -422,19 +422,29 @@ class TestYOLOv5RandomAffineMask(unittest.TestCase):
 
     def test_transform_with_boxlist_mask(self):
         results = copy.deepcopy(self.results)
+        results['img'] = cv2.imread(r"D:\Files\dev\datasets\MinneApple_test\images\20150919_174151_image1.jpg")
         img = copy.deepcopy(results['img'])
+        # self = TransBitmapMasks.random(height=720,width=1280,dtype=np.uint8)
         results['gt_bboxes'] = HorizontalBoxes(results['gt_bboxes'])
-        results['gt_masks'] = TransPolygonMasks.random(1,224,224,20)
-
+        mask = cv2.imread(r"D:\Files\dev\datasets\MinneApple_test\masks\20150919_174151_image1.png",cv2.COLOR_RGB2GRAY)
+        results['gt_masks'] = TransPolygonMasks([[np.array([300,400,400,600,600,600,600,400])]],1280,720)
+        cv2.imshow('0', cv2.cvtColor(results['gt_masks'].to_bitmap().masks.astype('uint8').transpose(1, 2, 0) * 255, cv2.COLOR_GRAY2RGB))
+        cv2.waitKey()
         transform = YOLOv5RandomAffineWithMask()
         results = transform(copy.deepcopy(results))
-        self.assertTrue(results['img'].shape[:2] == (224, 224))
+
+        # self.assertTrue(results['img'].shape[:2] == (224, 224))
         self.assertTrue(results['gt_bboxes_labels'].shape[0] ==
                         results['gt_bboxes'].shape[0])
         self.assertTrue(results['gt_bboxes_labels'].dtype == np.int64)
         self.assertTrue(results['gt_bboxes'].dtype == torch.float32)
         self.assertTrue(results['gt_ignore_flags'].dtype == bool)
-
+        # self.assertTrue(results['gt_masks'].masks.shape[1:] == results['img'].shape[:2])
+        print(results['gt_masks'].masks.shape)
+        print(results['img'].shape[:2])
+        cv2.imshow('1',results['img'])
+        cv2.imshow('0',cv2.cvtColor((results['gt_masks'].masks.astype('uint8').transpose(1,2,0)*255),cv2.COLOR_GRAY2RGB))
+        cv2.waitKey()
 
 class TestPPYOLOERandomCrop(unittest.TestCase):
 

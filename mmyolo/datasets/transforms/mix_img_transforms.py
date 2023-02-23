@@ -152,6 +152,7 @@ class BaseMixImageTransform(BaseTransform, metaclass=ABCMeta):
                     for index in indexes
                 ]
 
+
             if self.pre_transform is not None:
                 for i, data in enumerate(mix_results):
                     # pre_transform may also require dataset
@@ -314,6 +315,7 @@ class Mosaic(BaseMixImageTransform):
             results (dict): Updated result dict.
         """
         assert 'mix_results' in results
+        import cv2
         mosaic_bboxes = []
         mosaic_bboxes_labels = []
         mosaic_ignore_flags = []
@@ -343,6 +345,7 @@ class Mosaic(BaseMixImageTransform):
                 results_patch = results['mix_results'][i - 1]
 
             img_i = results_patch['img']
+
             h_i, w_i = img_i.shape[:2]
             # keep_ratio resize
             scale_ratio_i = min(img_scale_h / h_i, img_scale_w / w_i)
